@@ -82,24 +82,6 @@ NumberPublish=function(name){
   numpub
 }
 
-url=paste("https://www.ncbi.nlm.nih.gov/pubmed/?term=CHURCHMANLEE+Harvard",sep="")
-a=getURL(url)
-a=readLines(tc <- textConnection(a)); close(tc)
-if(length(grep("The following term was not found in PubMed:",a))==1) {
-  numpub=0
-} else if (length(grep("No documents match your search terms",a))==1) {
-  numpub=0 
-} else if (length(grep("Showing results for",a))==1) {
-  numpub=0
-} else if (length(grep("            <div><h2>Search results</h2><h3 class=\"result_count left\">Items:",a))==1) {
-  number=a[grep("            <div><h2>Search results</h2><h3 class=\"result_count left\">Items:",a)]
-  number=regmatches(number,gregexpr('[0-9]+</h3>',number))
-  numpub=gsub("</h3>","",number)
-} else {
-  numpub=1
-}
-
-
 namesearch=gsub(", ","+",uniquePI)
 numpub=0
 for (i in namesearch) {
@@ -107,6 +89,8 @@ numpub=c(numpub,NumberPublish(i))
 }
 numpub=numpub[-1]
 cbind(uniquePI,numpub)
+
+#4.
 write.csv(cbind(uniquePI,numpub),"Publish.csv")
 
 

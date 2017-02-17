@@ -10,6 +10,7 @@ theurl <- "https://en.wikipedia.org/wiki/S%26P_100"
 a <- getURL(theurl)
 
 #1.
+library(XML)
 table=readHTMLTable(a)[2]
 write.table(table,"table.text")
 table=read.csv("~/table.text", sep="")
@@ -20,12 +21,12 @@ table
 newsymbol=gsub("BRK.B","BRK-B",as.matrix(table));newsymbol
 
 #3.
-for (i in newsymbol[,1][-which(newsymbol[,1]=="MS")]) { #NOTE: THERE IS NO WEBPAGE FOR MS
+for (i in newsymbol[,1]) { 
 download.file(paste("http://chart.finance.yahoo.com/table.csv?s=",i,"&a=11&b=31&c=2016&d=0&e=31&f=2017&g=d&ignore=.csv",sep=""), paste(i,".csv",sep=""))
 }
 
 #4.
-for (i in newsymbol[,1][-which(newsymbol[,1]=="MS")]) {
+for (i in newsymbol[,1]) {
 stock=read.csv(paste("~/",i,".csv",sep=""))
 stock=cbind(rep(paste(i),dim(stock)[1]),stock)
 write.csv(stock,paste(i,".csv",sep=""))
@@ -33,7 +34,7 @@ write.csv(stock,paste(i,".csv",sep=""))
 
 #5.
 stock=rep(NA,8)
-for (i in newsymbol[,1][-which(newsymbol[,1]=="MS")]) {
+for (i in newsymbol[,1]) {
   filename=read.csv(paste("~/",i,".csv",sep=""))
   stock=rbind(stock,filename)
 }

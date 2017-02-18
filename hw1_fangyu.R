@@ -55,8 +55,8 @@ uniquePI=unique(sort(hv$Contact.PI...Project.Leader));uniquePI
 
 #2.
 for (i in 1:length(uniquePI)) {
-  if (length(gregexpr(" ", uniquePI[[i]])[[1]])==2) {
-    uniquePI[[i]]=sub("\\s+[A-Z]+\\.*$", "", uniquePI[[i]])
+  if (length(gregexpr(" ", uniquePI[[i]])[[1]])>=2) {
+    uniquePI[[i]]=sub("\\s+[A-Z]*\\'*[A-Z]+\\.*$", "", uniquePI[[i]])
   }
 }
 

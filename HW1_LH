@@ -1,0 +1,96 @@
+###Question 1
+library(XML)
+####################################################################################
+## 1.extract the symbols and company names from the webpage.
+webpage <- scan("https://en.wikipedia.org/wiki/S%26P_100", what="character")
+tables = readHTMLTable(webpage)[2]
+names(tables)<-"Components"
+table<-data.frame(tables)
+table$Components.Name<-gsub("\n", " ",table$Components.Name)
+head(table)
+
+####################################################################################
+## 2.change symbol system
+table$Components.Symbol<-gsub("[.]", "-",table$Components.Symbol)
+
+####################################################################################
+## 3. download the S&P 100 historical stock prices in csv format.
+downloadYahooStocks <- function(stock) {
+    theurl <- paste0("http://chart.finance.yahoo.com/table.csv?s=", stock, "&a=11&b=31&c=2016&d=0&e=31&f=2017&g=d&ignore=.csv")
+
+    ## download file
+    print(download.file(theurl, paste0(stock, ".csv"))) 
+}
+stocklist <- table$Components.Symbol
+for (s in stocklist) {
+    downloadYahooStocks(s)
+    Sys.sleep(10)
+}
+####################################################################################
+## 4. add a column
+for (i in stocklist){
+  jj<-read.csv(paste0(i,".csv"))
+  jj$Symbol=i
+  jj<-cbind(jj[8],jj[1:7])
+  write.csv(jj, file=(paste0(i,".csv")),row.names=FALSE)
+}
+####################################################################################
+## 5. concatenate all CSV
+library(plyr) 
+u <- ldply(paste0(stocklist, ".csv"), read.csv) 
+write.csv(u, file="ALL.csv",row.names=FALSE)
+
+
+###Question 2
+####################################################################################
+## 1.extracted the unqiue PI names
+extracted_unique_names<-read.csv("NIHHarvard.csv")
+Tgroup<-grep("T",extracted_unique_names$Activity)
+Fgroup<-grep("F",extracted_unique_names$Activity)
+TFgroup<-sort(c(Tgroup,Fgroup))
+
+## mynames exclude the Activity contain the letter starting with "F" and "T"
+mynames <- extracted_unique_names[-c(TFgroup), ]
+mynames$Contact.PI...Project.Leader<-gsub("\\s+$","",mynames$Contact.PI...Project.Leader)
+## extracted the unique PI names
+unique_PI<-unique(mynames$Contact.PI...Project.Leader)
+head(unique_PI)
+####################################################################################
+## 2. remove middle name or initial or both
+##for example: the name "FORTIER, CATHERINE BRAWN" has "BRAWN" as middle name. 
+##"WHELAN, SEAN PJ" here "PJ" is initial
+unique_PI <- as.character(unique_PI)
+sj <- strsplit(unique_PI, ' ')
+cleanName <- matrix(NA, nrow = length(sj), ncol = 3)
+for (i in 1:length(sj)) {
+  name <- sj[[i]]
+  cleanName[i,1] <- gsub("[,]", "", name[1])
+  cleanName[i,2] <- name[2]
+  cleanName[i,3] <- paste0(name[1],' ', name[2])
+}
+cleanName[101,] <- c('TCHETGEN TCHETGEN', 'JOEL', 'TCHETGEN TCHETGEN, JOEL') #this person has special name format
+colnames(cleanName) <- c('lastname','firstname','Combination')
+####################################################################################
+## 3. extrat the number of publications for each faculty using only first and last name.
+resultLst <- rep(NA, dim(cleanName)[1])
+getResult <- function(Namelist) {
+  url <- paste0('https://www.ncbi.nlm.nih.gov/pubmed/?term=', Namelist[1],'%2C+',Namelist[2],'%5BAuthor%5D+AND+Harvard%5BAffiliation%5D')
+  html <- htmlParse(getURL(url), encoding='UTF-8')
+  return(xpathSApply(html,"//h3[@class='result_count left']",xmlValue))
+}
+resultLst <- apply(cleanName,1,getResult)
+
+resultLst[[263]] <- "Items: 1" #the results for this auther is displayed different others
+resultLst[[37]] <- "Items: 1"
+resultLst[[42]] <- "Items: 1"
+
+numberLst <- rep(NA, length(resultLst))
+for(i in 1:length(resultLst)) {
+  result <- resultLst[[i]]
+  numberLst[i] <- tail(strsplit(result,split=" ")[[1]],1)
+}
+
+##4.
+final <- cbind.data.frame(cleanName[,3], numberLst)
+colnames(final) <- c('Name','Number of Publications')
+write.csv(final,'final.csv')

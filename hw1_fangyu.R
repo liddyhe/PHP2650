@@ -64,7 +64,7 @@ uniquePI
 
 #3.
 NumberPublish=function(name){
-  url=paste("https://www.ncbi.nlm.nih.gov/pubmed/?term=",name,"+Harvard",sep="")
+  url=paste("https://www.ncbi.nlm.nih.gov/pubmed/?term=",name,"%5BAuthor%5D+AND+Harvard%5BAffiliation%5D",sep="")
   a=getURL(url)
   a=readLines(tc <- textConnection(a)); close(tc)
   if(length(grep("The following term was not found in PubMed:",a))==1) {

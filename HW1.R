@@ -119,20 +119,58 @@ PI_names <- unique(trim.trailing(raw_tables$Contact.PI...Project.Leader))
 ## Q2
 
 ## use a pattern to delete all middle names and initials
-PI_names[grep("\\,\\s[A-Z]+[-']*[A-Z]*(\\s[A-Z]+[-']*[A-Z]*)+\\.*$", PI_names)] <- 
-  sub("\\s[A-Z]+[-']*[A-Z]*\\.*$","",PI_names[grep("\\,\\s[A-Z]+[-']*[A-Z]*(\\s[A-Z]+[-']*[A-Z]*)+\\.*$", PI_names)])
+PI_names[grep("\\,\\s[A-Z]+[-']*[A-Z]*\\s[A-Z]+[-']*[A-Z]*\\.*$", PI_names)] <- 
+  sub("\\s[A-Z]+[-']*[A-Z]*\\.*$","",PI_names[grep("\\,\\s[A-Z]+[-']*[A-Z]*\\s[A-Z]+[-']*[A-Z]*\\.*$", PI_names)])
 
 
 ## Q3
 
+## change names format to match searching format
+name_tem <- sub("(\\,\\s)", "%2C+", PI_names)
+name_final <- sub("\\s", "+", name_tem)
 
+## create an empty vector to store number of publication
+num_publication <- rep(NA,length(name_final))
 
+## loop
+for (i in 1:length(name_final)){
+  
+  ## create URL
+  URL3 <- paste0("https://www.ncbi.nlm.nih.gov/pubmed/?term=", name_final[i], "%5BAuthor%5D+AND+Harvard%5BAffiliation%5D")
+  
+  ## read URL into R
+  html <- htmlParse(getURL(URL3),encoding="UTF-8")
+  
+  ## extract the target information
+  publications <- xpathSApply(html,"//h3[@class='result_count left']",xmlValue)
+  
+  ## if there is only one publication, variable publications will become "list()"
+  if(length(publications)==0){
+    num_publication[i] = 1
+  }
+  
+  ## if there is no publication or more than one publications, it will return "Items: ..."
+  else{
+    
+    ## specify the index of all whitespace
+    publications1 <- gregexpr(pattern =' ', publications)
+    
+    ## the number of the last whitespace is our target
+    num_publication[i] <- as.numeric(substr(publications,start=max(publications1[[1]])+1,stop=nchar(publications)))
+  
+  }
+
+}
 
 
 ## Q4
 
 
+## combine PI names and corresponding number of publications togehther
+final <- cbind(PI_names, num_publication)
 
+## export to csv file
+write.csv(final,"PI_publications.csv", row.names = F)
 
 
 

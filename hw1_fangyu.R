@@ -35,8 +35,8 @@ write.csv(stock,paste(i,".csv",sep=""))
 #5.
 stock=rep(NA,8)
 for (i in newsymbol[,1]) {
-  filename=read.csv(paste("~/",i,".csv",sep=""))
-  stock=rbind(stock,filename)
+  filename=read.csv(paste("~/",i,".csv",sep=""),header=FALSE)
+  stock=rbind(stock,filename[-1,])
 }
 stock=stock[-1,-1]
 names(stock)[1]="Stock.Symbol";stock

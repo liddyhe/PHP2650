@@ -1,0 +1,123 @@
+###########################################
+##########Homework 2
+###########################################
+
+
+
+##################
+##include libraries
+##################
+library(ggplot2)                        
+library('parallel')
+
+
+
+###################
+##Include the names of all team members
+##################
+authors <- function() {
+    c("Fangyu Wang", "Ruiting Guo", "Yifu Liu", "Zeling He")
+}
+
+
+##################
+##problem 1
+#################
+
+prob1 <- function(...) {
+  
+  ##Extract the name of each file
+  filenames <- grep("sub.*txt", list.files(), value = TRUE)
+  filenames <- filenames[order(filenames)] #sort the filenames by increasing order
+  
+  ##function to obtain the Fisher transformation matrix for each subject
+  fTrans <- function(filename) {
+    tab <- read.table(filename) #data
+    mat <- cor(tab) #correlation matrix
+    mat <- (1/2)*(log((1 + mat)/(1-mat)))
+    diag(mat) <- 0
+    return(mat)
+  }
+  
+  ##initiate parallel computing
+  no_cores <- detectCores()-1 #caclucate number of cores
+  
+  #apply to all files
+  result<-mclapply(cl, filenames, fTrans, mc.cores = no_cores)
+  names(result)<-substring(filenames,4,9) #extract the ID:XXXXXX from "subXXXXXX.txt"
+  
+  ##return the results
+  return(result)
+}
+
+
+##################
+##problem 2
+#################
+prob2=function(data=simplify2array(prob1())) {
+  MV=list(NA,2)
+  MV[[1]]=apply(data, 1:2, mean)
+  MV[[2]]=apply(data, 1:2, var)
+  return(MV)
+}
+
+##################
+##problem 3
+#################
+
+prob3=function(List=prob1()) {
+  
+  ##IDs have been sorted in problem 1
+  train=simplify2array(List[c(1:410)])
+  test=simplify2array(List[c(411:820)])
+  TrTe=list(NA,2)
+  TrTe[[1]]=apply(train, 1:2, mean)
+  TrTe[[2]]=apply(test,1:2,mean)
+  return(TrTe)
+}
+
+##################
+##problem 4
+#################
+prob4 <- function(...) {
+  
+  ##Extract the name of each files
+  filenames <- grep("sub.*txt", list.files(), value = TRUE)
+  filenames <- filenames[order(filenames)] #sort the filenames by increasing order
+  
+  ##function to read in data and normalization
+  reNorm <- function(filename) {
+    tab <- read.table(filename)
+    tab <- scale(tab)
+  }
+  
+  ##initiate parallel computing
+  no_cores <- detectCores()-1 #caclucate number of cores
+
+  #Xs is the normalized data
+  Xs <- mclapply(filenames, reNorm, mc.cores = no_cores)
+  
+  Xtrain <- do.call(rbind, Xs[1:410])
+  Xtest <- do.call(rbind, Xs[411:820])
+  
+  ##We choose singular value decomposition for matrix factorization
+  
+  svdResults <- function(train, test) {
+    matFac <- svd(train) #train = UG
+    U <- matFac$u
+    G <- diag(matFac$d) %*% t(matFac$v)
+    
+    covList <- lapply(list(U %*% G, train, test),cov)
+    n1 <- norm(covList[[2]]- covList[[3]], type = "F") #Frobenius norm of Cov(train)-Cov(test)
+    n2 <- norm(covList[[1]]- covList[[3]], type = "F") #Frobenius norm of Cov(UG)-Cov(test)
+    
+    results <- list(U, G, U %*% G, train, test, n1,n2)
+    names(results) <- c('U','G','cov(UG)','cov(train)','cov(test)','Frobenius norm of cov(train)-cov(test)','Frobenius norm of cov(UG)-cov(test)' )
+    
+    return(results)
+  }
+  
+  svdResults(Xtrain, Xtest)
+  
+} 
+

@@ -1,0 +1,78 @@
+
+
+library(rsvd)
+library(bigalgebra)
+library(matrixcalc)
+library(parallel)
+
+no_cores=detectCores()-1
+cl=makeCluster(no_cores)
+
+
+prob1=function() {
+
+filename=grep("sub.*txt", list.files(), value = TRUE)
+filename=filename[order(filename)]
+
+Ftranse=function(x){
+cor=cor(read.table(x))
+F.mat=log((1+cor)/(1-cor))/2
+diag(F.mat)=0
+return(F.mat)
+}
+
+F=parLapply(cl, filename, Ftranse)
+return(as.list(F))
+
+}
+
+
+
+prob2=function(data=simplify2array(prob1())) {
+MV=list(NA,2)
+MV[[1]]=apply(data,1:2,mean)
+MV[[2]]=apply(data,1:2,sd)
+return(MV)
+}
+
+
+
+prob3=function() {
+F=prob1() # Files has been ordered in prob1()
+train=simplify2array(F[c(1:410)])
+test=simplify2array(F[c(411:820)])
+TrTe=list(NA,2)
+TrTe[[1]]=apply(train,1:2,mean)
+TrTe[[2]]=apply(test,1:2,mean)
+return(TrTe)
+}
+
+
+
+prob4=function() {
+
+filename=grep("sub.*txt", list.files(), value = TRUE)
+filename=filename[order(filename)]
+rsFile=function(x){
+file=read.table(x)
+sf=scale(file)
+return(sf)
+}
+Xs=parLapply(cl, filename, rsFile)
+Xs=rbind(Xs) #May want to double confrim here. Cannot check the result of parLapply on my laptop. Assume parLapply returned a vector of matrices. 
+
+C.mat=list(NA,7)
+C.mat[[4]]=cor(Xs[c(1:(dim(Xs)[1]/2)),])
+C.mat[[5]]=cor(Xs[c(((dim(Xs)[1]/2)+1):dim(Xs)[1]),])
+C.mat[[7]]=frobenius.norm(C.mat[[4]]-C.mat[[5]])
+
+decomp=rsvd(Xs[c(1:(dim(Xs)[1]/2)),])
+u=as.big.matrix(decomp$u)
+U=u %*% diag(decomp$d);C.mat[[1]]=as.matrix(U)
+G=t(decomp$v);C.mat[[2]]=G
+Cug=cor(as.matrix(U) %*% G);C.mat[[3]]=Cug
+C.mat[[6]]=frobenius.norm(Cug-C.mat[[5]])
+
+return(C.mat)
+}
+

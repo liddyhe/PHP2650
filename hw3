@@ -1,0 +1,24 @@
+#Read data into R
+setwd("~/Downloads")
+library("RSQLite")
+
+con <- dbConnect(drv=RSQLite::SQLite(), dbname="pred.sqlite")
+tables <- dbListTables(con)
+tables <- tables[tables != "sqlite_sequence"]
+Datas <- vector("list", length=length(tables))
+for (i in seq(along=tables)) {
+  Datas[[i]] <- dbGetQuery(conn=con, statement=paste("SELECT * FROM '", tables[[i]], "'", sep=""))
+}
+
+
+#problem1:
+names(Datas)=c("demo","outcome","pred")
+
+IDs=c(Datas[[1]]$id,Datas[[2]]$id,Datas[[3]]$id)
+IDs=unique(IDs)
+
+IDs.missing=setdiff(c(Datas[[1]]$id,Datas[[3]]$id),Datas[[2]]$id)
+
+
+#problem2:
+dpo=Reduce(function(dtf1, dtf2) merge(dtf1, dtf2, by = "id", all = TRUE),list(Datas[[1]],Datas[[3]],Datas[[2]][,1:2]))

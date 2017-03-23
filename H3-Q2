@@ -1,0 +1,31 @@
+#Problem2
+dpo <- Reduce(function(dtf1, dtf2) merge(dtf1, dtf2, by = "id", all = TRUE),list(Datas[[1]],Datas[[3]],Datas[[2]][,1:2]))
+dpo$gender[dpo$gender == 'M'] <- 0
+dpo$gender[dpo$gender == 'F'] <- 1
+dpo$gender <- as.numeric(dpo$gender)
+dpo$age <- as.numeric(dpo$age)
+train <- dpo[dpo$id %in% Datas[[2]]$id,] #the IDs have outcomes
+train <- train[complete.cases(train),] #the training X
+test <- dpo[dpo$id %in% IDs.missing,] #predicted IDs
+head(X)
+is.numeric(dpo$gender)
+
+##Greedy Alogrithm
+X <- as.matrix(train[,-c(1,109)])
+y <- train[,109]
+head(X)
+
+ga <- function(y, X, K=10000) {
+  p <-  ncol(X)
+  b.ga <- rep(0, p)
+  for (i in 1:K) {
+    r <- y - X%*%b.ga 
+    sel <-  which.max(abs(t(r)%*%X))
+    b.ga[sel] <- b.ga[sel] + sum(r*X[,sel])/sum(X[,sel]^2) 
+  }
+  return(b.ga) 
+}
+
+system.time(b.ga <- ga(y, X))
+
+sum( (y-X%*%b.ga)^2)

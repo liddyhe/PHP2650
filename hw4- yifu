@@ -1,0 +1,106 @@
+---
+title: "HW4"
+author: "Fangyu Wang, Ruiting Guo, Zeling He and Yifu Liu"
+date: "April 10, 2017"
+output: pdf_document
+---
+
+```{r}
+prob1 <- function(X,b,lambda) {
+#function for soft-thresholding #
+soft_threshold<- function(x,a){
+  result <- numeric(length(x))
+  result[which(x > a)] <- x[which(x > a)] - a
+  result[which(x < -a)] <- x[which(x < -a)] + a
+  return(result)
+}
+
+#implement coordinate desent algorithm for scio
+#initial values
+maxiter=1000;tol=1e-4
+  X<-as.matrix(X)
+  n<-nrow(X)
+  A=(1/n)*(t(X)%*%X)+0.01*diag(ncol(X))
+  beta<-matrix(0,nrow(A),1)
+  betalist<- list(length(maxiter+1))
+  betalist[[1]]<-beta
+  
+  #coordinate descent
+  for (j in 1:maxiter){
+    for (k in 1:length(beta)){
+      #compute residual
+      r=b[k]-A[-k,k]%*%beta[-k]
+      #soft-threshold
+      beta[k]<-(1/A[k,k]^2)*soft_threshold(A[k,k]*r, lambda*A[k,k])
+      
+    }
+    betalist[[j+1]]<-beta
+    if(norm(as.matrix(betalist[[j]] - beta),"F") < tol) {        break }
+  }
+  return(beta)
+}
+```
+
+```{r}
+prob2<-function(...){
+X<-read.table("sub100206.txt")
+b<-diag(ncol(X))[,2]
+list_lambda<-c(0.5,0.4,0.3,0.2,0.1,0.01)
+result<-list(rep("NA",6))
+for (i in 1:length(list_lambda)){
+  result[[i]]<-prob1(X,b,lambda=list_lambda[i])
+}
+return(result)
+}
+```
+
+```{r}
+prob3 <- function(...) {
+#function for soft-thresholding #
+soft_threshold<- function(x,a){
+  result <- numeric(length(x))
+  result[which(x > a)] <- x[which(x > a)] - a
+  result[which(x < -a)] <- x[which(x < -a)] + a
+  return(result)
+}
+#implement ADMM algorithm for scio
+ADMM<-function(X,b,lambda){
+#here tau and lambda is exchanged in notation to keep constant with CD
+#initial values and implement SCIO
+maxiter=1000;tol=1e-4
+  X<-as.matrix(X)
+  n<-nrow(X)
+  rho=4
+  A=(1/n)*(t(X)%*%X)+0.01*diag(ncol(X))
+  beta<-matrix(0,nrow(A),1)
+  z<-beta-1
+  tau<-rep(0,length(beta))
+  betalist<- list(length(maxiter+1))
+  betalist[[1]]<-beta
+#implement ADMM
+  for (j in 1:maxiter){
+    #beta = t(t(A)*A+rho*I)*(b-rho*z-tau)
+    beta<-solve((A+rho*diag(nrow(A))))%*%(b+rho*z-tau)
+    
+    #soft-threshold z =sign(beta+tau/rho)max(|beta+tau/rho|-lambda/rho,0)
+    z<-soft_threshold(beta+tau/rho,lambda/rho)
+    
+    # ADMM update tau: tau^(k+1) = tau^(k)+rho(beta^(k+1)-z^(k+1))
+    tau<-tau+rho*(beta-z)
+    
+    betalist[[j+1]]<-beta
+    if(norm(as.matrix(betalist[[j]] - beta),"F") < tol) {        break }
+  }
+  return(beta)
+}
+#test for ADMM
+X<-read.table("sub100206.txt")
+b<-diag(ncol(X))[,2]
+list_lambda<-c(0.5,0.4,0.3,0.2,0.1,0.01)
+result<-list(rep("NA",6))
+for (i in 1:length(list_lambda)){
+  result[[i]]<-ADMM(X,b,lambda=list_lambda[i])
+}
+return(result)
+}
+```

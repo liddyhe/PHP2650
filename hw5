@@ -1,0 +1,47 @@
+# Set refered directory
+DIR="~/Downloads/"
+
+# Load libraries
+library(nnet)
+
+# Import training dataset
+setwd(DIR)
+train = read.csv("~/Downloads/Predict_NoShow_Train.csv")
+public = read.csv("~/Downloads/Predict_NoShow_PublicTest_WithoutLabels.csv")
+
+# Explore Data
+#dim(train) #180000 x 16 (including "ID" and the response variable "Status")
+#str(train)
+#apply(is.na(train),2,sum) #No missing value
+
+# Define a predictive function
+predictNoshow = function (X) {
+  
+  ## Manipulate data
+  # Transform factors into numeric variables:
+  for (i in c(3,15)) { 
+    train[,i] = as.numeric(train[,i])
+    X[,i] = as.numeric(X[,i])
+  }
+  train[,16] = as.numeric(train[,16])
+  # Delete ID, DateAppointmentWasMade and DateOfAppointment for predictors:
+  trainCleaned = train[,-c(1,4,5)]
+  XCleaned = X[,-c(1,4,5)]
+
+  ## Fit model and predict probabilities
+  # Fit a predictive model using given training dataset with the machine learning technique -- neural network:
+  ideal <- class.ind(train$Status)
+  nn = nnet(trainCleaned[,-13], ideal, size=10, softmax=TRUE, trace=FALSE)
+  
+  # Predict probabilities with input predictors
+  prediction = predict(nn, XCleaned, type="raw")[,1]
+  return(prediction)
+}
+
+# Make a prediction for the public dataset and generate the required csv file
+predictions=predictNoshow(public)
+pubPred=cbind(public$ID,predictions)
+write.table(pubPred,"~/Downloads/Predict_public.csv",sep=",",col.names = FALSE,row.names = FALSE)
+
+
+

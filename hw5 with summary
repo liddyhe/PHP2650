@@ -1,0 +1,78 @@
+# Set refered directory
+DIR="~/Downloads/"
+
+# Load libraries
+library(nnet)
+
+# Import training dataset
+setwd(DIR)
+train = read.csv("~/Downloads/Predict_NoShow_Train.csv")
+#public = read.csv("~/Downloads/Predict_NoShow_PublicTest_WithoutLabels.csv")
+private = read.csv("~/Downloads/Predict_NoShow_PrivateTest_WithoutLabels.csv")
+
+# Explore Data
+#dim(train) #180000 x 16 (including "ID" and the response variable "Status")
+#str(train);str(public);str(private)
+#apply(is.na(train),2,sum) #No missing value
+
+# Define a function for prediction
+predictNoshow = function (X) {
+  
+  ## Manipulate data
+  # Transform factors into numeric variables:
+  for (i in c(3,15)) { 
+    train[,i] = as.numeric(train[,i])
+    X[,i] = as.numeric(X[,i])
+  }
+  train[,16] = as.numeric(train[,16])
+  # Delete ID, DateAppointmentWasMade and DateOfAppointment for predictors:
+  trainCleaned = train[,-c(1,4,5)]
+  XCleaned = X[,-c(1,4,5)]
+
+  ## Fit model and predict probabilities
+  # Fit a predictive model using given training dataset with the machine learning technique -- neural network:
+  ideal <- class.ind(train$Status)
+  nn = nnet(trainCleaned[,-13], ideal, size=10, softmax=TRUE, trace=FALSE)
+  
+  # Predict probabilities with input predictors
+  prediction = predict(nn, XCleaned, type="raw")[,1]
+  return(prediction)
+}
+
+# Make predictions for public dataset
+#predictions=predictNoshow(public)
+#pubPred=cbind(public$ID,predictions)
+#write.table(pubPred,"~/Downloads/Predict_public.csv",sep=",",col.names = FALSE,row.names = FALSE)
+
+# Make predictions for private dataset
+predictions=predictNoshow(private)
+priPred=cbind(private$ID,predictions)
+write.table(priPred,"~/Downloads/Predict_private.csv",sep=",",col.names = FALSE,row.names = FALSE)
+
+#########################################################################
+############################### Summary #################################
+#
+#    Two main steps were considered to complete this prediction task. 
+# Firstly, necessary data exploration and manipulations were conducted. 
+# Secondly,the best candidate of machine learning techniques was 
+# determined by model performance and time efficiency.
+#    During basic data exploration and manipulations, uninformative 
+# variables ID, a DateAppointmentWasMade and DateOfAppointment were 
+# removed from the pool of predictors. Furthermore, numeric values 
+# were assigned to string factors due to their nominal property and 
+# the limitation of certain programming requirement.
+#    For the selection of the best machine learning technique, a few 
+# trials with different methods were completed, and for the accuracy 
+# of prediction, predictors were involved in analyses as many as possible. 
+# First of all, the model of a lasso logistic regression with all main 
+# effects and 2-way interactions included as predictors generated 
+# relatively poor predictions. Thus, an assumption has been reached that 
+# an unsupervised method could provide better results than a supervised 
+# method. Accordingly, more unsupervised techniques were explored, and 
+# they included varied subclass of tree, random forest, discriminant 
+# analyses and support vector machine. Finally, the method of neural 
+# network helped to form a model with the highest accuracy and reasonable 
+# length of running time.
+#    Thus, out best solution comes from neural network technique.
+#
+#########################################################################

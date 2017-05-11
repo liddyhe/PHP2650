@@ -1,0 +1,9 @@
+library(gdata)
+library(mclust)
+
+dat5<-read.csv("5year.arff", header=FALSE, comment.char = "@")
+
+#################Resort
+###Change ? into NA
+dat5[dat5 =="?"]<-NA
+View(dat5) #5910 instances. 410 bankrupt.

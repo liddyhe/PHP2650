@@ -79,7 +79,7 @@ lda.pred = predict(lda.fit, test[, -ncol(test)],type="prob")[,2]
 lda.auc=performance(prediction(lda.pred, test$class), measure="auc") 
 lda.auc=as.numeric(lda.auc@y.values)
 
-AUC=c(AUC,c(nn.auc,lda.auc))
+AUC=rbind(AUC,c(nn.auc,lda.auc))
 }
 
 AUC

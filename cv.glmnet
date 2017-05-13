@@ -1,0 +1,16 @@
+for (i in 1:10) {
+  
+samples <- sample(nrow(data2), nrow(data2)*0.8)
+test=data3[samples, ]
+train=data3[-samples, ]
+
+X=as.matrix(train[,-64])
+Y=train[,64]
+newX=test[,-64]
+model=cv.glmnet(X,Y,nfolds=10,type.measure="auc",family="binomial",parallel=TRUE)
+print(coef(model))
+predOutcome=predict(model, s="lambda.min", as.matrix(newX), type="response")
+glm.auc=performance(prediction(predOutcome, test$class), measure="auc")
+glm.auc=as.numeric(glm.auc@y.values)
+print(glm.auc)
+}

@@ -43,3 +43,48 @@ samples <- sample(nrow(dat5_1), nrow(dat5_1)*0.8)
 train <- dat5_1[samples,]
 test <- dat5_1[-samples,]
 control<- trainControl(method = 'repeatedcv', number = 10, repeats = 3, allowParallel = TRUE) #repeat 3 times of 10 folds cross validation
+
+
+################## Neural Nextwork and LDA ####################
+## Get distribution of AUC
+AUC=c(1,2)
+
+for (i in 1:1000) {
+  
+samples <- sample(nrow(data2), nrow(data2)*0.8)
+test=data3[samples, ]
+train=data3[-samples, ]
+
+## Required by LDA in Caret  
+levels(train$class) <- make.names(levels(factor(train$class)))
+
+## Set cv
+control = trainControl(method = "repeatedcv", number = 10, repeats = 3, classProbs = TRUE, summaryFunction = twoClassSummary,allowParallel=TRUE)
+  
+## Neural Network
+#control = trainControl(method = "repeatedcv", number = 10, repeats = 3, allowParallel=TRUE)
+nn.fit = train(class~., train, method = "nnet", trControl = control, preProc = c("center", "scale"),trace = FALSE)
+#out = data.frame(value = coef(nn.fit$finalModel),param = names(coef(nn.fit$finalModel)))
+#garson(nn.fit)
+
+nn.pred = predict(nn.fit, test[, -ncol(test)],type="prob")[,2]
+nn.auc=performance(prediction(nn.pred, test$class), measure="auc")
+nn.auc=as.numeric(nn.auc@y.values)
+
+## Linear discriminant analyses
+lda.fit = train(class ~ ., data = train, method = "lda", trControl = control, metric = "ROC", preProc = c("center", "scale"))
+#ldaStep.fit = train(ldaPredictorSelection$formula, data = train, method = "lda", trControl = control, metric = "ROC", preProc = c("center", "scale"))
+
+lda.pred = predict(lda.fit, test[, -ncol(test)],type="prob")[,2]
+lda.auc=performance(prediction(lda.pred, test$class), measure="auc") 
+lda.auc=as.numeric(lda.auc@y.values)
+
+AUC=c(AUC,c(nn.auc,lda.auc))
+}
+
+AUC
+aucDistr=cbind(aucMean=apply(AUC[-1,],2,mean),aucSD=apply(AUC[-1,],2,sd))
+row.names(aucDistr)=c("NN","LDA")
+aucDistr
+
+#######################################################################

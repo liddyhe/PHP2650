@@ -1,0 +1,64 @@
+setwd("/Users/Liddy/Desktop/PHP2650/final/data")
+
+library(foreign) #read data
+library(corrplot) #correlation plot
+library(randomForest) #random forest
+library(gbm) #boosted tree
+library(ROCR) #auc
+library(caret) 
+
+###################################################
+######                 Pre-Process             ########
+###################################################
+dat5<-read.arff("5year.arff")
+
+#####################
+####Exploratory 
+#####################
+View(dat5) #5910 instances. 410 bankrupt.
+
+length(which(!complete.cases(dat5))) #2879 with missing values.
+
+apply(dat5[,-37], 2, function(x) length(which(is.na(x))) ) #V37, V27, V45, V60 have many missing.
+
+#####################
+####Correlation Plots
+####################
+colnames(dat5)
+dat5_1 <- na.omit(dat5[,-37])
+M <- cor(dat5_1[,-64])
+corrplot(M,order = 'hclust')
+
+
+#######################
+####Variable Selection
+#######################
+highlyCor <- findCorrelation(abs(M), cutoff = .95)
+SelectM <- M[-highlyCor, - highlyCor]
+dat5_2 <- dat5_1[,colnames(SelectM)] #42 variables left
+dat5_2 <- cbind(dat5_2, dat5_1[,64])
+head(dat5_2)
+corrplot(SelectM, order = 'hclust')
+#####V1 & V2: delete V2
+
+
+##########################################################
+######              Original   Models             ########
+##########################################################
+
+set.seed(100)
+
+samples <- sample(nrow(dat5_1), nrow(dat5_1)*0.8)
+train <- dat5_1[samples,]
+test <- dat5_1[-samples,]
+control<- trainControl(method = 'repeatedcv', number = 10, repeats = 3) #repeat 3 times of 10 folds cross validation
+
+###############################################################
+######              Selected  Data   Models           ########
+###############################################################
+set.seed(100)
+
+samples1 <- sample(nrow(dat5_2), nrow(dat5_2)*0.8)
+train1 <- dat5_2[samples1,]
+test1 <- dat5_2[-samples1,]
+control<- trainControl(method = 'repeatedcv', number = 10, repeats = 3) #repeat 3 times of 10 folds cross validation

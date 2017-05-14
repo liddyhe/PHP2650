@@ -1,3 +1,8 @@
+library(nnet)
+library(devtools)
+install_github('fawda123/NeuralNetTools')
+library(NeuralNetTools)
+
 ###############################################################
 ######            Selected  Data  Models (NN)          ########
 ###############################################################
@@ -14,9 +19,8 @@ control<- trainControl(method = 'repeatedcv', number = 10, repeats = 3) #repeat 
 
 names(train1)[43]="class"
 names(test1)[43]="class"
-system.time(train(class~., train1, method = "nnet", trControl = control, preProc = c("center", "scale"),trace = FALSE))
 nn.fit = train(class~., train1, method = "nnet", trControl = control, preProc = c("center", "scale"),trace = FALSE)
-#print(garson(nn.fit)) # Run this line if it is interesting to explore the importance of predictors.
+print(garson(nn.fit)) # Run this line if it is interesting to explore the importance of predictors.
 
 nn.pred = predict(nn.fit, test1[, -ncol(test1)],type="prob")[,2]
 nn.auc=performance(prediction(nn.pred, test1[,43]), measure="auc")

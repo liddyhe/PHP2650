@@ -1,0 +1,44 @@
+###############################################################
+######            Selected  Data  Models (NN)          ########
+###############################################################
+set.seed(100)
+
+AUC=c(1)
+
+for (i in 1:10) {
+  
+samples1 <- sample(nrow(dat5_2), nrow(dat5_2)*0.8)
+train1 <- dat5_2[samples1,]
+test1 <- dat5_2[-samples1,]
+control<- trainControl(method = 'repeatedcv', number = 10, repeats = 3) #repeat 3 times of 10 folds cross validation
+
+names(train1)[43]="class"
+names(test1)[43]="class"
+system.time(train(class~., train1, method = "nnet", trControl = control, preProc = c("center", "scale"),trace = FALSE))
+nn.fit = train(class~., train1, method = "nnet", trControl = control, preProc = c("center", "scale"),trace = FALSE)
+#print(garson(nn.fit)) # Run this line if it is interesting to explore the importance of predictors.
+
+nn.pred = predict(nn.fit, test1[, -ncol(test1)],type="prob")[,2]
+nn.auc=performance(prediction(nn.pred, test1[,43]), measure="auc")
+nn.auc=as.numeric(nn.auc@y.values)
+
+AUC = c(AUC,nn.auc)
+
+}
+
+AUC = AUC[-1]
+
+## Saved Result: AUC & running time
+
+#> AUC
+#[1] 0.8782235 0.8929000 0.9176220 0.8945899 0.8847212 0.8673177 0.8953966
+#[8] 0.8882120 0.9467007 0.8846974
+#> summary(AUC)
+#Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#0.8673  0.8847  0.8906  0.8950  0.8952  0.9467 
+#> sd(AUC)
+#[1] 0.02234843
+# user  system elapsed 
+# 159.848   4.641 165.750
+#> 166*10/60
+#[1] 27.66667

@@ -1,0 +1,237 @@
+#Set refered directory
+DIR="~/Downloads/"
+
+
+#Load libraries
+library(RSQLite)
+library(glmnet)
+
+
+#Problem 1
+prob1=function() {
+
+  #Import data
+  setwd(DIR)
+  con=dbConnect(drv=RSQLite::SQLite(), dbname="pred.sqlite")
+  tables=dbListTables(con)
+  Datas=vector("list", length=length(tables))
+  for (i in seq(along=tables)) {
+    Datas[[i]]=dbGetQuery(conn=con, statement=paste("SELECT * FROM '", tables[[i]], "'", sep=""))
+  }
+
+  #Generate IDs
+  ID=unique(c(Datas[[1]]$id,Datas[[2]]$id,Datas[[3]]$id))
+  ID.miss=setdiff(c(Datas[[1]]$id,Datas[[3]]$id),Datas[[2]]$id)
+
+  #Return results
+  return(list(ID, ID.miss))
+}
+
+
+#Problem 2
+prob2=function() {
+
+  #Import data
+  setwd(DIR)
+  con = dbConnect(drv=RSQLite::SQLite(), dbname="pred.sqlite")
+  tables = dbListTables(con)
+  Datas = vector("list", length=length(tables))
+  for (i in seq(along=tables)) {
+    Datas[[i]] = dbGetQuery(conn=con, statement=paste("SELECT * FROM '", tables[[i]], "'", sep=""))
+  }  
+  
+  ID.miss=setdiff(c(Datas[[1]]$id,Datas[[3]]$id),Datas[[2]]$id)
+  
+  #Transform data
+  Datas[[1]]$gender[Datas[[1]]$gender=="M"]=1
+  Datas[[1]]$gender[Datas[[1]]$gender=="F"]=0
+  Datas[[1]]$gender=as.numeric(Datas[[1]]$gender)
+  Datas[[1]]$age=as.numeric(Datas[[1]]$age)
+  
+  #Fit predict model
+  fullData=Reduce(function(dtf1, dtf2) merge(dtf1, dtf2, by = "id", all = TRUE),list(Datas[[1]],Datas[[3]],Datas[[2]][,1:2]))
+  newX=fullData[fullData$id %in% ID.miss,][,-c(1,dim(fullData)[2])]
+  newX[is.na(newX)]=0
+  cd=fullData[complete.cases(fullData),]
+  
+  X=as.matrix(cd[,-c(1,dim(cd)[2])])
+  Y=cd[,dim(cd)[2]]
+  model=cv.glmnet(X,Y,nfolds=10,type.measure="mse")
+  predOutcome=predict(model, s="lambda.min", as.matrix(newX), type="response")
+  
+  #Return results
+  return(cbind(ID.miss=ID.miss,pred.O1=as.vector(predOutcome)))
+}
+
+
+#Problem 3
+prob3=function() {
+  
+  #Import data
+  setwd(DIR)
+  con = dbConnect(drv=RSQLite::SQLite(), dbname="pred.sqlite")
+  tables = dbListTables(con)
+  Datas = vector("list", length=length(tables))
+  for (i in seq(along=tables)) {
+    Datas[[i]] = dbGetQuery(conn=con, statement=paste("SELECT * FROM '", tables[[i]], "'", sep=""))
+  }  
+  
+  ID.miss=setdiff(c(Datas[[1]]$id,Datas[[3]]$id),Datas[[2]]$id)
+  
+  #Transform data
+  Datas[[1]]$gender[Datas[[1]]$gender=="M"]=1
+  Datas[[1]]$gender[Datas[[1]]$gender=="F"]=0
+  Datas[[1]]$gender=as.numeric(Datas[[1]]$gender)
+  Datas[[1]]$age=as.numeric(Datas[[1]]$age)
+  
+  #Generate dataset
+  dataset=list(NA)
+  for (i in 2:dim(Datas[[2]])[2]) {
+    dataset[[i-1]]=Reduce(function(dtf1, dtf2) merge(dtf1, dtf2, by = "id", all = TRUE),list(Datas[[1]],Datas[[3]],Datas[[2]][,c(1,i)]))
+  }  
+  
+  #Fit predict model
+  predOutcomes=lapply(dataset, 
+                function(data) {
+  newX=data[data$id %in% ID.miss,][,-c(1,dim(data)[2])]
+  newX[is.na(newX)]=0
+  cd=data[complete.cases(data),]
+  
+  X=as.matrix(cd[,-c(1,dim(cd)[2])])
+  Y=cd[,dim(cd)[2]]
+  model=cv.glmnet(X,Y,nfolds=10,type.measure="mse")
+  return(predict(model, s="lambda.min", as.matrix(newX), type="response"))
+  })
+  
+  #Return results
+  pred=do.call(cbind,predOutcomes)
+  NAME=NA
+  for (i in 1:18) {
+    NAME[i]=paste0("pred.O",i)
+  }
+  results=cbind(ID.miss,pred)
+  colnames(results)=c("ID.miss", NAME)
+  return(results)
+}
+
+
+#Problem 4
+prob4=function() {
+  
+  #Import data
+  setwd(DIR)
+  con = dbConnect(drv=RSQLite::SQLite(), dbname="pred.sqlite")
+  tables = dbListTables(con)
+  Datas = vector("list", length=length(tables))
+  for (i in seq(along=tables)) {
+    Datas[[i]] = dbGetQuery(conn=con, statement=paste("SELECT * FROM '", tables[[i]], "'", sep=""))
+  }  
+  
+  addition=read.csv(paste0(DIR,"pred2.csv"), header=FALSE)
+  ANm=NA
+  for (i in 1:dim(addition)[2]-1) {
+    ANm[i]=paste0("A",i)
+  }
+  names(addition)=c("id",ANm)
+  
+  ID.miss=setdiff(c(Datas[[1]]$id,Datas[[3]]$id),Datas[[2]]$id)
+  
+  #Transform data
+  Datas[[1]]$gender[Datas[[1]]$gender=="M"]=1
+  Datas[[1]]$gender[Datas[[1]]$gender=="F"]=0
+  Datas[[1]]$gender=as.numeric(Datas[[1]]$gender)
+  Datas[[1]]$age=as.numeric(Datas[[1]]$age)
+  
+  #Generate dataset
+  dataset=list(NA)
+  for (i in 2:dim(Datas[[2]])[2]) {
+    dataset[[i-1]]=Reduce(function(dtf1, dtf2) merge(dtf1, dtf2, by = "id", all = TRUE),list(Datas[[1]],Datas[[3]],addition,Datas[[2]][,c(1,i)]))
+  }  
+  
+  #Fit predict model
+  predOutcomes=lapply(dataset, 
+                      function(data) {
+                        newX=data[data$id %in% ID.miss,][,-c(1,dim(data)[2])]
+                        newX[is.na(newX)]=0
+                        cd=data[complete.cases(data),]
+                        
+                        X=as.matrix(cd[,-c(1,dim(cd)[2])])
+                        Y=cd[,dim(cd)[2]]
+                        model=cv.glmnet(X,Y,nfolds=10,type.measure="mse")
+                        return(predict(model, s="lambda.min", as.matrix(newX), type="response"))
+                      })
+  
+  #Return results
+  pred=do.call(cbind,predOutcomes)
+  NAME=NA
+  for (i in 1:18) {
+    NAME[i]=paste0("pred.O",i)
+  }
+  results=cbind(ID.miss,pred)
+  colnames(results)=c("ID.miss", NAME)
+  return(results)
+}
+
+
+#Problem 5
+prob5=function() {
+  
+  #Import data
+  con = dbConnect(drv=RSQLite::SQLite(), dbname="pred.sqlite")
+  tables = dbListTables(con)
+  Datas = vector("list", length=length(tables))
+  for (i in seq(along=tables)) {
+    Datas[[i]] = dbGetQuery(conn=con, statement=paste("SELECT * FROM '", tables[[i]], "'", sep=""))
+  }  
+  
+  addition=read.csv(paste0(DIR,"pred2.csv"), header=FALSE)
+  ANm=NA
+  for (i in 1:dim(addition)[2]-1) {
+    ANm[i]=paste0("A",i)
+  }
+  names(addition)=c("id",ANm)
+  
+  extra=read.csv("https://www.dropbox.com/s/8pv2z9l4bccityn/pred3.csv?dl=0",header=FALSE)
+  XNm=NA
+  for (i in 1:dim(extra)[2]-1) {
+    XNm[i]=paste0("X",i)
+  }
+  names(extra)=c("id",XNm)
+  
+  ID.miss=setdiff(c(Datas[[1]]$id,Datas[[3]]$id),Datas[[2]]$id)
+  
+  #Transform data
+  Datas[[1]]$gender[Datas[[1]]$gender=="M"]=1
+  Datas[[1]]$gender[Datas[[1]]$gender=="F"]=0
+  Datas[[1]]$gender=as.numeric(Datas[[1]]$gender)
+  Datas[[1]]$age=as.numeric(Datas[[1]]$age)
+  
+  #Generate dataset
+  dataset=list(NA)
+  for (i in 2:dim(Datas[[2]])[2]) {
+    dataset[[i-1]]=Reduce(function(dtf1, dtf2) merge(dtf1, dtf2, by = "id", all = TRUE),list(Datas[[1]],Datas[[3]],addition,extra,Datas[[2]][,c(1,i)]))
+  }  
+  
+  #Fit predict model
+  predOutcomes=lapply(dataset, 
+                      function(data) {
+                        newX=data[data$id %in% ID.miss,][,-c(1,dim(data)[2])]
+                        newX[is.na(newX)]=0
+                        cd=data[complete.cases(data),]
+                        
+                        X=as.matrix(cd[,-c(1,dim(cd)[2])])
+                        Y=cd[,dim(cd)[2]]
+                        model=cv.glmnet(X,Y,nfolds=10,type.measure="mse")
+                        return(predict(model, s="lambda.min", as.matrix(newX), type="response"))
+                      })
+  
+  #Return results
+  pred=do.call(cbind,predOutcomes)
+  NAME=NA
+  for (i in 1:18) {
+    NAME[i]=paste0("pred.O",i)
+  }
+  results=cbind(ID.miss,pred)
+  colnames(results)=c("ID.miss", NAME)
+  return(results)
+}
